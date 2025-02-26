@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                             QTableView, QPushButton, QLabel, QComboBox,
-                            QLineEdit, QGroupBox, QSplitter, QMessageBox)
+                            QLineEdit, QGroupBox, QSplitter, QMessageBox, QAbstractItemView)
 from PyQt5.QtCore import Qt, QTimer
 from order_model import OrderTableModel
 from account_value_model import AccountValueTableModel
@@ -70,13 +70,36 @@ class MainWindow(QMainWindow):
         self.account_table.setAlternatingRowColors(True)
         self.account_table.horizontalHeader().setStretchLastSection(True)
         
+        # Set selection behavior to select entire rows
+        self.account_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        
         account_layout.addWidget(account_label)
         account_layout.addWidget(account_desc)
         account_layout.addWidget(self.account_table)
         
+        # Stats section
+        stats_widget = QWidget()
+        stats_layout = QVBoxLayout(stats_widget)
+        
+        self.total_potential_gain_label = QLabel("Total Potential Gain: 0.00000000")
+        stats_layout.addWidget(self.total_potential_gain_label)
+        
+        self.selected_coin_label = QLabel("Selected Coin: None")
+        stats_layout.addWidget(self.selected_coin_label)
+        
+        self.total_orders_label = QLabel("Total Orders: 0")
+        stats_layout.addWidget(self.total_orders_label)
+        
+        self.current_value_label = QLabel("Current Total Value: 0.00 USD")
+        stats_layout.addWidget(self.current_value_label)
+        
+        self.percentage_gain_label = QLabel("Percentage Gain: 0.00%")
+        stats_layout.addWidget(self.percentage_gain_label)
+        
         # Add both sections to splitter
         splitter.addWidget(orders_widget)
         splitter.addWidget(account_widget)
+        splitter.addWidget(stats_widget)
         
         # Controls
         controls_layout = QHBoxLayout()
@@ -86,10 +109,6 @@ class MainWindow(QMainWindow):
         
         self.status_label = QLabel("Ready")
         controls_layout.addWidget(self.status_label, 1)
-        
-        # Add total potential gain label
-        self.total_potential_gain_label = QLabel("Total Potential Gain: 0.00000000")
-        controls_layout.addWidget(self.total_potential_gain_label)
         
         # Add all components to main layout
         main_layout.addWidget(splitter)
@@ -101,6 +120,7 @@ class MainWindow(QMainWindow):
         """Set up signal/slot connections."""
         self.refresh_button.clicked.connect(self.refresh_data)
         self.order_filter.textChanged.connect(self.filter_orders)
+        self.account_table.selectionModel().selectionChanged.connect(self.update_stats_for_selected_coin)
     
     def refresh_data(self):
         """Refresh all data from Coinbase."""
@@ -155,3 +175,26 @@ class MainWindow(QMainWindow):
         
         except Exception as e:
             self.status_label.setText(f"Error filtering orders: {str(e)}")
+    
+    def update_stats_for_selected_coin(self):
+        """Update stats for the selected coin in the account table."""
+        selected_indexes = self.account_table.selectionModel().selectedRows()
+        if not selected_indexes:
+            return
+        
+        selected_index = selected_indexes[0]
+        currency = self.account_value_model.data(selected_index, Qt.DisplayRole)
+        
+        # Find the corresponding account value
+        account_values = self.coinbase_client.calculate_potential_account_value()
+        if currency in account_values:
+            values = account_values[currency]
+            potential_gain = values['potential']
+            current_value = values['current']
+            percentage_gain = ((potential_gain - current_value) / current_value) * 100 if current_value != 0 else 0
+            
+            # Update stats labels
+            self.selected_coin_label.setText(f"Selected Coin: {currency}")
+            self.total_orders_label.setText(f"Total Orders: {len([order for order in self.coinbase_client.get_open_orders() if order['product_id'].startswith(currency)])}")
+            self.current_value_label.setText(f"Current Total Value: {current_value:.2f} USD")
+            self.percentage_gain_label.setText(f"Percentage Gain: {percentage_gain:.2f}%")

@@ -21,7 +21,11 @@ class CoinbaseClient:
 
     def fetch_data_via_websocket(self):
         """Fetch data using WebSocket and update caches."""
-        self.client = WSClient(api_key=self.api_key, api_secret=self.api_secret, on_message=self.on_message)
+        self.client = WSClient(api_key=self.api_key, 
+                               api_secret=self.api_secret, 
+                               on_message=self.on_message, 
+                               #max_size=50 * 1024 * 1024, 
+                               verbose=True)
         
         # Wait for data to be fetched
         #try:
@@ -29,7 +33,7 @@ class CoinbaseClient:
         self.client.open()
         self.client.subscribe(product_ids=[], channels=['user'])
 
-        time.sleep(1)
+        time.sleep(10)
 
         #except WSClientConnectionClosedException as e:
         #    print("Connection closed! Retry attempts exhausted.")
@@ -42,12 +46,20 @@ class CoinbaseClient:
 
     def on_message(self, message):
         """Handle incoming WebSocket messages."""
-        data = json.loads(message)
-        ws_object = WebsocketResponse(json.loads(message))
-        if ws_object.channel == "user" :
-            for event in ws_object.events:
-                self.cached_orders.extend(event['orders'])
-                print(self.cached_orders)
+        while True:
+            data = json.loads(message)
+            ws_object = WebsocketResponse(data)
+            if ws_object.channel == "user" :
+                # ran out of orders
+                #if len(ws_object.events[0]['orders']) < 50:
+                #    return
+                for event in ws_object.events:
+                    self.cached_orders.extend(event['orders'])
+                    
+                    return # we need bettter logic to get all orders
+            else:
+                return
+
 
     
     def get_open_orders(self):
@@ -67,6 +79,14 @@ class CoinbaseClient:
         # Add in potential values from open orders
         for order in open_orders:
             if order.order_type == 'Limit' and order.status == 'OPEN':
+
+                ## debug
+                if order.product_id == 'CORECHAIN-USD':
+                    print("\n=========================================")
+                    print("CORECHAIN")
+                    print(order)
+                    print("=========================================\n")
+
                 side = order.order_side
                 product_id = order.product_id
                 base_currency, quote_currency = product_id.split('-')
@@ -79,12 +99,10 @@ class CoinbaseClient:
                 # Initialize currencies if they don't exist in balances
                 if base_currency not in balances:
                     balances[base_currency] = {'current': 0, 'potential': 0}
-                if quote_currency not in balances:
-                    balances[quote_currency] = {'current': 0, 'potential': 0}
                 
                 if side == 'SELL':
-                    # If sell order is filled
-                    balances[base_currency]['potential'] += float(order.total_value_after_fees)
+                    # If sell order is filled, we lose base currency and gain quote currency
+                    balances[base_currency]['potential'] += (price * leaves_quantity)
         
         return balances
     
