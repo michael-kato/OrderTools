@@ -1,0 +1,16 @@
+Metadata-Version: 2.2
+Name: coinbase-order-tracker
+Version: 0.1.0
+Summary: A tool to track and analyze Coinbase spot limit orders
+Author: Coinbase Order Tracker
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Requires-Dist: PyQt5>=5.15.2
+Requires-Dist: requests>=2.25.0
+Dynamic: author
+Dynamic: classifier
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

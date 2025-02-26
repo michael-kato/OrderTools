@@ -1,0 +1,157 @@
+from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+                            QTableView, QPushButton, QLabel, QComboBox,
+                            QLineEdit, QGroupBox, QSplitter, QMessageBox)
+from PyQt5.QtCore import Qt, QTimer
+from order_model import OrderTableModel
+from account_value_model import AccountValueTableModel
+import traceback
+import time
+
+class MainWindow(QMainWindow):
+    """Main window for the Coinbase Order Tracker application."""
+    
+    def __init__(self, coinbase_client):
+        super().__init__()
+        self.coinbase_client = coinbase_client
+        self.order_model = OrderTableModel()
+        self.account_value_model = AccountValueTableModel()
+        
+        self.init_ui()
+        self.setup_connections()
+        
+        # Initial data fetch
+        self.refresh_data()
+    
+    def init_ui(self):
+        """Set up the user interface."""
+        self.setWindowTitle("Coinbase Order Tracker")
+        self.setMinimumSize(900, 600)
+        
+        # Create central widget and layout
+        central_widget = QWidget()
+        main_layout = QVBoxLayout(central_widget)
+        
+        # Create splitter for resizable sections
+        splitter = QSplitter(Qt.Vertical)
+        
+        # Orders section
+        orders_widget = QWidget()
+        orders_layout = QVBoxLayout(orders_widget)
+        
+        orders_header = QHBoxLayout()
+        orders_label = QLabel("<h2>Open Limit Orders</h2>")
+        self.order_filter = QLineEdit()
+        self.order_filter.setPlaceholderText("Filter by product (e.g. BTC-USD)")
+        orders_header.addWidget(orders_label)
+        orders_header.addWidget(self.order_filter)
+        
+        # Orders table
+        self.orders_table = QTableView()
+        self.orders_table.setModel(self.order_model)
+        self.orders_table.setSortingEnabled(True)
+        self.orders_table.setAlternatingRowColors(True)
+        self.orders_table.horizontalHeader().setStretchLastSection(True)
+        
+        orders_layout.addLayout(orders_header)
+        orders_layout.addWidget(self.orders_table)
+        
+        # Account value section
+        account_widget = QWidget()
+        account_layout = QVBoxLayout(account_widget)
+        
+        account_label = QLabel("<h2>Potential Account Value</h2>")
+        account_desc = QLabel("Shows how your account value would change if all open limit orders were filled.")
+        account_desc.setWordWrap(True)
+        
+        # Account value table
+        self.account_table = QTableView()
+        self.account_table.setModel(self.account_value_model)
+        self.account_table.setSortingEnabled(True)
+        self.account_table.setAlternatingRowColors(True)
+        self.account_table.horizontalHeader().setStretchLastSection(True)
+        
+        account_layout.addWidget(account_label)
+        account_layout.addWidget(account_desc)
+        account_layout.addWidget(self.account_table)
+        
+        # Add both sections to splitter
+        splitter.addWidget(orders_widget)
+        splitter.addWidget(account_widget)
+        
+        # Controls
+        controls_layout = QHBoxLayout()
+        
+        self.refresh_button = QPushButton("Refresh Data")
+        controls_layout.addWidget(self.refresh_button)
+        
+        self.status_label = QLabel("Ready")
+        controls_layout.addWidget(self.status_label, 1)
+        
+        # Add total potential gain label
+        self.total_potential_gain_label = QLabel("Total Potential Gain: 0.00000000")
+        controls_layout.addWidget(self.total_potential_gain_label)
+        
+        # Add all components to main layout
+        main_layout.addWidget(splitter)
+        main_layout.addLayout(controls_layout)
+        
+        self.setCentralWidget(central_widget)
+    
+    def setup_connections(self):
+        """Set up signal/slot connections."""
+        self.refresh_button.clicked.connect(self.refresh_data)
+        self.order_filter.textChanged.connect(self.filter_orders)
+    
+    def refresh_data(self):
+        """Refresh all data from Coinbase."""
+        try:
+            self.status_label.setText("Refreshing data...")
+            
+            # Fetch data via WebSocket and get updated account values
+            account_values = self.coinbase_client.refresh_data()
+            
+            # Get open orders
+            orders = self.coinbase_client.get_open_orders()
+            self.order_model.update_orders(orders)
+            
+            # Apply filter if one exists
+            filter_text = self.order_filter.text()
+            if filter_text:
+                self.filter_orders(filter_text)
+            
+            # Update account values in the model
+            self.account_value_model.update_account_values(account_values)
+            
+            # Calculate total potential gain
+            total_potential_gain = sum(item['potential'] for item in account_values.values())
+            self.total_potential_gain_label.setText(f"Total Potential Gain: {total_potential_gain:.8f}")
+            
+            # Resize table columns to contents
+            self.orders_table.resizeColumnsToContents()
+            self.account_table.resizeColumnsToContents()
+            
+            self.status_label.setText(f"Data refreshed at {time.strftime('%H:%M:%S')}")
+        
+        except Exception as e:
+            error_message = f"Error refreshing data: {str(e)}"
+            self.status_label.setText(error_message)
+            QMessageBox.critical(self, "Error", error_message)
+            traceback.print_exc()
+            raise e
+    
+    def filter_orders(self, text):
+        """Filter orders table by product ID."""
+        try:
+            if not text:
+                # If filter is empty, show all orders
+                self.order_model.update_orders(self.coinbase_client.get_open_orders())
+            else:
+                # Filter orders by product ID
+                all_orders = self.coinbase_client.get_open_orders()
+                filtered_orders = [order for order in all_orders if text.upper() in order.get("product_id", "")]
+                self.order_model.update_orders(filtered_orders)
+            
+            self.orders_table.resizeColumnsToContents()
+        
+        except Exception as e:
+            self.status_label.setText(f"Error filtering orders: {str(e)}")
