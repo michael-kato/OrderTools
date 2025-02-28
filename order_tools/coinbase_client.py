@@ -61,7 +61,7 @@ class CoinbaseClient:
     
     def calculate_potential_account_value(self):
         """
-        Calculate the potential account value if all open limit orders were filled
+        Calculate the potential account value if all open limit sell orders were filled
         and available balances were sold at the highest limit sell price.
         
         Returns:

@@ -31,6 +31,10 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         main_layout = QVBoxLayout(central_widget)
         
+        # Total Potential Gain
+        self.total_potential_gain_label = QLabel("<h2>Total Potential Gain: 0.00000000</h2>")
+        main_layout.addWidget(self.total_potential_gain_label)
+        
         # Create splitter for resizable sections
         splitter = QSplitter(Qt.Vertical)
         
@@ -70,22 +74,25 @@ class MainWindow(QMainWindow):
         self.account_table.setAlternatingRowColors(True)
         self.account_table.horizontalHeader().setStretchLastSection(True)
         
-        # Set selection behavior to select entire rows
-        self.account_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        
         account_layout.addWidget(account_label)
         account_layout.addWidget(account_desc)
         account_layout.addWidget(self.account_table)
         
+        # Add both sections to splitter
+        splitter.addWidget(orders_widget)
+        splitter.addWidget(account_widget)
+        
+        # Refresh button
+        self.refresh_button = QPushButton("Refresh Data")
+        main_layout.addWidget(self.refresh_button)
+        
+        # Status label
+        self.status_label = QLabel("Ready")
+        main_layout.addWidget(self.status_label)
+        
         # Stats section
-        stats_widget = QWidget()
+        stats_widget = QGroupBox("Statistics")
         stats_layout = QVBoxLayout(stats_widget)
-        
-        self.total_potential_gain_label = QLabel("Total Potential Gain: 0.00000000")
-        stats_layout.addWidget(self.total_potential_gain_label)
-        
-        self.selected_coin_label = QLabel("Selected Coin: None")
-        stats_layout.addWidget(self.selected_coin_label)
         
         self.total_orders_label = QLabel("Total Orders: 0")
         stats_layout.addWidget(self.total_orders_label)
@@ -96,23 +103,9 @@ class MainWindow(QMainWindow):
         self.percentage_gain_label = QLabel("Percentage Gain: 0.00%")
         stats_layout.addWidget(self.percentage_gain_label)
         
-        # Add both sections to splitter
-        splitter.addWidget(orders_widget)
-        splitter.addWidget(account_widget)
-        splitter.addWidget(stats_widget)
-        
-        # Controls
-        controls_layout = QHBoxLayout()
-        
-        self.refresh_button = QPushButton("Refresh Data")
-        controls_layout.addWidget(self.refresh_button)
-        
-        self.status_label = QLabel("Ready")
-        controls_layout.addWidget(self.status_label, 1)
-        
-        # Add all components to main layout
+        # Add stats section to main layout
         main_layout.addWidget(splitter)
-        main_layout.addLayout(controls_layout)
+        main_layout.addWidget(stats_widget)
         
         self.setCentralWidget(central_widget)
     
@@ -157,7 +150,6 @@ class MainWindow(QMainWindow):
             self.status_label.setText(error_message)
             QMessageBox.critical(self, "Error", error_message)
             traceback.print_exc()
-            raise e
     
     def filter_orders(self, text):
         """Filter orders table by product ID."""
@@ -193,7 +185,6 @@ class MainWindow(QMainWindow):
             percentage_gain = ((potential_gain - current_value) / current_value) * 100 if current_value != 0 else 0
             
             # Update stats labels
-            self.selected_coin_label.setText(f"Selected Coin: {currency}")
             self.total_orders_label.setText(f"Total Orders: {len([order for order in self.coinbase_client.get_open_orders() if order['product_id'].startswith(currency)])}")
             self.current_value_label.setText(f"Current Total Value: {current_value:.2f} USD")
             self.percentage_gain_label.setText(f"Percentage Gain: {percentage_gain:.2f}%")
