@@ -33,7 +33,7 @@ class AccountValueTableModel(QAbstractTableModel):
             if column == 0:  # Currency
                 return item["currency"]
             elif column == 1:  # Potential Gain
-                return f"{item['potential']:.8f}"
+                return f"{item['potential_gain']:.8f}"
         
         elif role == Qt.TextAlignmentRole:
             if column == 0:  # Currency
@@ -53,13 +53,13 @@ class AccountValueTableModel(QAbstractTableModel):
         self._account_values = []
         
         for currency, values in account_values.items():
-            potential = values["potential"]
+            potential = values["potential_gain"]
             self._account_values.append({
                 "currency": currency,
-                "potential": potential
+                "potential_gain": potential
             })
         
         # Sort by potential gain value (descending)
-        self._account_values.sort(key=lambda x: x["potential"], reverse=True)
+        self._account_values.sort(key=lambda x: x["potential_gain"], reverse=True)
         
         self.endResetModel()

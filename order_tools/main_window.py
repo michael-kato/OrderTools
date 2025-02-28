@@ -128,7 +128,7 @@ class MainWindow(QMainWindow):
             self.status_label.setText("Refreshing data...")
             
             # Fetch data via WebSocket and get updated account values
-            account_values = self.coinbase_client.refresh_data()
+            self.coinbase_client.refresh_data()
             
             # Get open orders
             orders = self.coinbase_client.get_open_orders()
@@ -140,10 +140,10 @@ class MainWindow(QMainWindow):
                 self.filter_orders(filter_text)
             
             # Update account values in the model
-            self.account_value_model.update_account_values(account_values)
+            self.account_value_model.update_account_values(self.coinbase_client.balances)
             
             # Calculate total potential gain
-            total_potential_gain = sum(item['potential'] for item in account_values.values())
+            total_potential_gain = sum(item['potential_gain'] for item in self.coinbase_client.balances.values())
             self.total_potential_gain_label.setText(f"Total Potential Gain: {total_potential_gain:.8f}")
             
             # Resize table columns to contents
@@ -186,11 +186,10 @@ class MainWindow(QMainWindow):
         currency = self.account_value_model.data(selected_index, Qt.DisplayRole)
         
         # Find the corresponding account value
-        account_values = self.coinbase_client.calculate_potential_account_value()
-        if currency in account_values:
-            values = account_values[currency]
-            potential_gain = values['potential']
-            current_value = values['current']
+        if currency in self.coinbase_client.balances:
+            values = self.coinbase_client.balances[currency]
+            potential_gain = values['potential_gain']
+            current_value = values['current_value']
             percentage_gain = ((potential_gain - current_value) / current_value) * 100 if current_value != 0 else 0
             
             # Update stats labels

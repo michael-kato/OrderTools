@@ -23,7 +23,7 @@ class CoinbaseClient:
         {'uuid': '7799066c-9fa6-5e77-b6b4-687e609521a5', 'name': 'PNUT Wallet', 'currency': 'PNUT', 'available_balance': {'value': '0.01', 'currency': 'PNUT'}, 'default': True, 'active': True, 'created_at': '2025-01-14T19:35:30.318Z', 'updated_at': '2025-02-25T20:02:22.923824Z', 'deleted_at': None, 'type': 'ACCOUNT_TYPE_CRYPTO', 'ready': True, 'hold': {'value': '283.12', 'currency': 'PNUT'}, 'retail_portfolio_id': 'aa1fb89d-364f-51f7-a02e-73a06312a0a6', 'platform': 'ACCOUNT_PLATFORM_CONSUMER'}
         """
         self.accounts = {}
-        self.available_balances = {}
+        self.balances = {}
 
         """
         FOR GPT, self.cached_orders data structure looks like this. 
@@ -68,19 +68,10 @@ class CoinbaseClient:
             dict: A dictionary containing current and potential values by currency.
         """
         open_orders = self.get_open_orders()
-        balances = {}
         
         # Add in potential values from open orders
         for order in open_orders:
             if order.order_type == 'Limit' and order.status == 'OPEN':
-
-                ## debug
-                if order.product_id == 'CORECHAIN-USD':
-                    print("\n=========================================")
-                    print("CORECHAIN")
-                    print(order)
-                    print("=========================================\n")
-
                 side = order.order_side
                 product_id = order.product_id
                 base_currency, quote_currency = product_id.split('-')
@@ -90,16 +81,16 @@ class CoinbaseClient:
                 size = float(order.leaves_quantity)
                 
                 # Initialize currencies if they don't exist in balances
-                if base_currency not in balances:
-                    balances[base_currency] = {'current': 0, 'potential': 0}
+                if base_currency not in self.balances:
+                    self.balances[base_currency] = {'current_value': 0, 'potential_gain': 0, 'available_coins': 0}
                 
                 if side == 'SELL':
                     # If sell order is filled, we lose base currency and gain quote currency
-                    balances[base_currency]['potential'] += (price * size)
+                    self.balances[base_currency]['potential_gain'] += (price * size)
         
         # Calculate potential gains from available balances
-        for currency, balance in balances.items():
-            if balance['current'] > 0:
+        for currency, balance in self.balances.items():
+            if balance['current_value'] > 0:
                 # Find the highest limit sell order for this currency
                 highest_sell_price = max(
                     (float(order.limit_price) for order in open_orders
@@ -108,9 +99,8 @@ class CoinbaseClient:
                 )
                 if highest_sell_price > 0:
                     # Calculate potential gain if available balance is sold at the highest sell price
-                    balance['potential'] += balance['current'] * highest_sell_price
+                    balance['potential_gain'] += balance['current_value'] * highest_sell_price
         
-        return balances
     
     def refresh_data(self):
         """Force refresh of all cached data using WebSocket."""
@@ -118,8 +108,21 @@ class CoinbaseClient:
         
         self.accounts = self.rest_client.get_accounts().accounts
         for account in self.accounts:
-            self.available_balances[account.available_balance['currency']] = account.available_balance['value']
+            base_currency = account.available_balance['currency']
+            if base_currency not in self.balances:
+                self.balances[base_currency] = {'current_value': 0, 'potential_gain': 0, 'available_coins': 0}
 
+            self.balances[base_currency]['available_coins'] = float(account.available_balance['value'])
+
+            product = self.rest_client.get_product(f"{base_currency}-USD", get_tradability_status=True)
+            if product.price:
+                price = float(product.price)
+            else:
+                price = 0.0
+
+            self.balances[base_currency]['current_value'] = float(account.hold['value']) * price
+
+            if base_currency == 'DOGE':
+                print('test')
         # Calculate potential account values after fetching data
-        account_values = self.calculate_potential_account_value()
-        return account_values
+        self.calculate_potential_account_value()
