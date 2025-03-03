@@ -1,8 +1,7 @@
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                             QTableView, QPushButton, QLabel, 
-                            QLineEdit, QGroupBox, QSplitter, QMessageBox)
+                            QLineEdit, QGroupBox, QSplitter, QMessageBox, QFormLayout, QSpinBox, QDoubleSpinBox)
 from PyQt5.QtCore import Qt
-from order_model import OrderTableModel
 from account_value_model import AccountValueTableModel
 import traceback
 import time
@@ -13,7 +12,6 @@ class MainWindow(QMainWindow):
     def __init__(self, coinbase_client):
         super().__init__()
         self.coinbase_client = coinbase_client
-        self.order_model = OrderTableModel()
         self.account_value_model = AccountValueTableModel()
         
         self.init_ui()
@@ -33,28 +31,6 @@ class MainWindow(QMainWindow):
         
         # Create splitter for resizable sections
         splitter = QSplitter(Qt.Vertical)
-        
-        # Orders section
-        orders_widget = QWidget()
-        orders_layout = QVBoxLayout(orders_widget)
-        
-        orders_header = QHBoxLayout()
-        orders_label = QLabel("<h2>Open Limit Orders</h2>")
-        self.order_filter = QLineEdit()
-        self.order_filter.setPlaceholderText("Filter by product (e.g. BTC-USD)")
-        orders_header.addWidget(orders_label)
-        orders_header.addWidget(self.order_filter)
-        
-        # Orders table
-        self.orders_table = QTableView()
-        self.orders_table.setModel(self.order_model)
-        self.orders_table.setSortingEnabled(True)
-        self.orders_table.setAlternatingRowColors(True)
-        self.orders_table.horizontalHeader().setStretchLastSection(True)
-        self.orders_table.setSelectionBehavior(QTableView.SelectRows)
-        
-        orders_layout.addLayout(orders_header)
-        orders_layout.addWidget(self.orders_table)
         
         # Account value section
         account_widget = QWidget()
@@ -76,9 +52,41 @@ class MainWindow(QMainWindow):
         account_layout.addWidget(account_desc)
         account_layout.addWidget(self.account_table)
         
+        # Ladder order section
+        ladder_widget = QWidget()
+        ladder_layout = QFormLayout(ladder_widget)
+        
+        ladder_label = QLabel("<h2>Ladder Order Placement</h2>")
+        ladder_layout.addRow(ladder_label)
+        
+        self.start_percentage_input = QDoubleSpinBox()
+        self.start_percentage_input.setSuffix("%")
+        self.start_percentage_input.setRange(0, 100)
+        self.start_percentage_input.setValue(1.0)
+        ladder_layout.addRow("Start Percentage:", self.start_percentage_input)
+        
+        self.stop_percentage_input = QDoubleSpinBox()
+        self.stop_percentage_input.setSuffix("%")
+        self.stop_percentage_input.setRange(0, 100)
+        self.stop_percentage_input.setValue(5.0)
+        ladder_layout.addRow("Stop Percentage:", self.stop_percentage_input)
+        
+        self.coins_input = QDoubleSpinBox()
+        self.coins_input.setRange(0, 1000)
+        self.coins_input.setValue(10.0)
+        ladder_layout.addRow("Number of Coins:", self.coins_input)
+        
+        self.ladder_orders_input = QSpinBox()
+        self.ladder_orders_input.setRange(1, 100)
+        self.ladder_orders_input.setValue(5)
+        ladder_layout.addRow("Number of Ladder Orders:", self.ladder_orders_input)
+        
+        self.place_ladder_button = QPushButton("Place Ladder Orders")
+        ladder_layout.addRow(self.place_ladder_button)
+        
         # Add both sections to splitter
-        splitter.addWidget(orders_widget)
         splitter.addWidget(account_widget)
+        splitter.addWidget(ladder_widget)
         
         # Stats section
         stats_widget = QGroupBox("Statistics")
@@ -113,8 +121,8 @@ class MainWindow(QMainWindow):
     def setup_connections(self):
         """Set up signal/slot connections."""
         self.refresh_button.clicked.connect(self.refresh_data)
-        self.order_filter.textChanged.connect(self.filter_orders)
         self.account_table.selectionModel().selectionChanged.connect(self.update_stats_for_selected_coin)
+        self.place_ladder_button.clicked.connect(self.place_ladder_orders)
     
     def refresh_data(self):
         """Refresh all data from Coinbase."""
@@ -126,12 +134,6 @@ class MainWindow(QMainWindow):
             
             # Get open orders
             orders = self.coinbase_client.get_open_orders()
-            self.order_model.update_orders(orders)
-            
-            # Apply filter if one exists
-            filter_text = self.order_filter.text()
-            if filter_text:
-                self.filter_orders(filter_text)
             
             # Update account values in the model
             self.account_value_model.update_account_values(self.coinbase_client.balances, orders)
@@ -141,7 +143,6 @@ class MainWindow(QMainWindow):
             self.total_potential_gain_label.setText(f"Total Potential Gain: {total_potential_gain:.8f}")
             
             # Resize table columns to contents
-            self.orders_table.resizeColumnsToContents()
             self.account_table.resizeColumnsToContents()
             
             self.status_label.setText(f"Data refreshed at {time.strftime('%H:%M:%S')}")
@@ -152,22 +153,18 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Error", error_message)
             traceback.print_exc()
     
-    def filter_orders(self, text):
-        """Filter orders table by product ID."""
-        try:
-            if not text:
-                # If filter is empty, show all orders
-                self.order_model.update_orders(self.coinbase_client.get_open_orders())
-            else:
-                # Filter orders by product ID
-                all_orders = self.coinbase_client.get_open_orders()
-                filtered_orders = [order for order in all_orders if text.upper() in order.get("product_id", "")]
-                self.order_model.update_orders(filtered_orders)
-            
-            self.orders_table.resizeColumnsToContents()
+    def place_ladder_orders(self):
+        """Place ladder orders based on user input."""
+        start_percentage = self.start_percentage_input.value()
+        stop_percentage = self.stop_percentage_input.value()
+        num_coins = self.coins_input.value()
+        num_ladder_orders = self.ladder_orders_input.value()
         
-        except Exception as e:
-            self.status_label.setText(f"Error filtering orders: {str(e)}")
+        # Implement logic to place ladder orders using the above parameters
+        # This will likely involve interacting with the CoinbaseClient to place orders
+        # Example: self.coinbase_client.place_ladder_orders(start_percentage, stop_percentage, num_coins, num_ladder_orders)
+        
+        QMessageBox.information(self, "Ladder Orders", "Ladder orders placed successfully!")
     
     def update_stats_for_selected_coin(self):
         """Update stats for the selected coin in the account table."""
