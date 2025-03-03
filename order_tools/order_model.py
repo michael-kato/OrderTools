@@ -35,13 +35,11 @@ class OrderTableModel(QAbstractTableModel):
             elif column == 2:  # Type
                 return order.order_type
             elif column == 3:  # Price
-                price_info = order.limit_price
-                return f"{price_info} USD"
+                return float(order.limit_price)
             elif column == 4:  # Size
-                size_info = order.outstanding_hold_amount
-                return f"{size_info} USD"
+                return float(order.outstanding_hold_amount)
             elif column == 5:  # Value
-                return f"{float(order.total_value_after_fees)} USD"
+                return float(order.total_value_after_fees)
             elif column == 6:  # Created At
                 timestamp = order.creation_time
                 if timestamp:

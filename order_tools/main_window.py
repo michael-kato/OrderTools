@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                            QTableView, QPushButton, QLabel, QComboBox,
-                            QLineEdit, QGroupBox, QSplitter, QMessageBox, QAbstractItemView)
-from PyQt5.QtCore import Qt, QTimer
+                            QTableView, QPushButton, QLabel, 
+                            QLineEdit, QGroupBox, QSplitter, QMessageBox)
+from PyQt5.QtCore import Qt
 from order_model import OrderTableModel
 from account_value_model import AccountValueTableModel
 import traceback
@@ -31,10 +31,6 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         main_layout = QVBoxLayout(central_widget)
         
-        # Total Potential Gain
-        self.total_potential_gain_label = QLabel("<h2>Total Potential Gain: 0.00000000</h2>")
-        main_layout.addWidget(self.total_potential_gain_label)
-        
         # Create splitter for resizable sections
         splitter = QSplitter(Qt.Vertical)
         
@@ -55,6 +51,7 @@ class MainWindow(QMainWindow):
         self.orders_table.setSortingEnabled(True)
         self.orders_table.setAlternatingRowColors(True)
         self.orders_table.horizontalHeader().setStretchLastSection(True)
+        self.orders_table.setSelectionBehavior(QTableView.SelectRows)
         
         orders_layout.addLayout(orders_header)
         orders_layout.addWidget(self.orders_table)
@@ -73,6 +70,7 @@ class MainWindow(QMainWindow):
         self.account_table.setSortingEnabled(True)
         self.account_table.setAlternatingRowColors(True)
         self.account_table.horizontalHeader().setStretchLastSection(True)
+        self.account_table.setSelectionBehavior(QTableView.SelectRows)
         
         account_layout.addWidget(account_label)
         account_layout.addWidget(account_desc)
@@ -81,14 +79,6 @@ class MainWindow(QMainWindow):
         # Add both sections to splitter
         splitter.addWidget(orders_widget)
         splitter.addWidget(account_widget)
-        
-        # Refresh button
-        self.refresh_button = QPushButton("Refresh Data")
-        main_layout.addWidget(self.refresh_button)
-        
-        # Status label
-        self.status_label = QLabel("Ready")
-        main_layout.addWidget(self.status_label)
         
         # Stats section
         stats_widget = QGroupBox("Statistics")
@@ -106,6 +96,17 @@ class MainWindow(QMainWindow):
         # Add stats section to main layout
         main_layout.addWidget(splitter)
         main_layout.addWidget(stats_widget)
+        
+        # Total Potential Gain and Refresh button at the bottom
+        self.total_potential_gain_label = QLabel("<h2>Total Potential Gain: 0.00000000</h2>")
+        main_layout.addWidget(self.total_potential_gain_label)
+        
+        # Status label
+        self.status_label = QLabel("Ready")
+        main_layout.addWidget(self.status_label)
+
+        self.refresh_button = QPushButton("Refresh Data")
+        main_layout.addWidget(self.refresh_button)
         
         self.setCentralWidget(central_widget)
     
@@ -133,10 +134,10 @@ class MainWindow(QMainWindow):
                 self.filter_orders(filter_text)
             
             # Update account values in the model
-            self.account_value_model.update_account_values(self.coinbase_client.balances)
+            self.account_value_model.update_account_values(self.coinbase_client.balances, orders)
             
             # Calculate total potential gain
-            total_potential_gain = sum(item['potential_gain'] for item in self.coinbase_client.balances.values())
+            total_potential_gain = sum(coin_info.potential_gain for coin_info in self.coinbase_client.balances.values())
             self.total_potential_gain_label.setText(f"Total Potential Gain: {total_potential_gain:.8f}")
             
             # Resize table columns to contents
@@ -175,16 +176,16 @@ class MainWindow(QMainWindow):
             return
         
         selected_index = selected_indexes[0]
-        currency = self.account_value_model.data(selected_index, Qt.DisplayRole)
+        coin = self.account_value_model.data(selected_index, Qt.DisplayRole)
         
         # Find the corresponding account value
-        if currency in self.coinbase_client.balances:
-            values = self.coinbase_client.balances[currency]
-            potential_gain = values['potential_gain']
-            current_value = values['current_value']
+        if coin in self.coinbase_client.balances:
+            coin_info = self.coinbase_client.balances[coin]
+            potential_gain = coin_info.potential_gain
+            current_value = coin_info.current_value
             percentage_gain = ((potential_gain - current_value) / current_value) * 100 if current_value != 0 else 0
             
             # Update stats labels
-            self.total_orders_label.setText(f"Total Orders: {len([order for order in self.coinbase_client.get_open_orders() if order['product_id'].startswith(currency)])}")
+            self.total_orders_label.setText(f"Total Orders: {len([order for order in self.coinbase_client.get_open_orders() if order['product_id'].startswith(coin)])}")
             self.current_value_label.setText(f"Current Total Value: {current_value:.2f} USD")
             self.percentage_gain_label.setText(f"Percentage Gain: {percentage_gain:.2f}%")

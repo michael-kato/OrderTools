@@ -1,4 +1,5 @@
 from PyQt5.QtCore import Qt, QAbstractTableModel
+from PyQt5.QtGui import QColor
 
 class AccountValueTableModel(QAbstractTableModel):
     """Table model for displaying account values in a QTableView."""
@@ -6,7 +7,7 @@ class AccountValueTableModel(QAbstractTableModel):
     def __init__(self, account_values=None):
         super().__init__()
         self._account_values = []
-        self._headers = ["Currency", "Potential Gain"]
+        self._headers = ["Currency", "Potential Gain", "Open Orders"]
         
         if account_values:
             self.update_account_values(account_values)
@@ -33,30 +34,50 @@ class AccountValueTableModel(QAbstractTableModel):
             if column == 0:  # Currency
                 return item["currency"]
             elif column == 1:  # Potential Gain
-                return f"{item['potential_gain']:.8f}"
+                return float(item['potential_gain'])  # Ensure it's a float
+            elif column == 2:  # Open Orders
+                return item['open_orders']  # Number of open orders
         
         elif role == Qt.TextAlignmentRole:
             if column == 0:  # Currency
                 return Qt.AlignLeft | Qt.AlignVCenter
             return Qt.AlignRight | Qt.AlignVCenter
         
+        elif role == Qt.BackgroundRole:
+            # Check if there is an available balance but no open orders
+            if item['available_coins'] > 0 and item['open_orders'] == 0:
+                return QColor(255, 165, 0)  # Orange-red color
+        
         return None
     
-    def update_account_values(self, account_values):
+    def update_account_values(self, account_values, open_orders):
         """
-        Update the model with new account values.
+        Update the model with new account values and open orders.
         
         Args:
             account_values (dict): Dictionary of account values from CoinbaseClient.
+            open_orders (list): List of open orders from CoinbaseClient.
         """
         self.beginResetModel()
         self._account_values = []
         
-        for currency, values in account_values.items():
-            potential = values["potential_gain"]
+        # Calculate the number of open orders for each currency
+        open_orders_count = {}
+        for order in open_orders:
+            currency = order.product_id.split('-')[0]
+            if currency not in open_orders_count:
+                open_orders_count[currency] = 0
+            open_orders_count[currency] += 1
+        
+        for coin, coin_info in account_values.items():
+            potential = coin_info.potential_gain
+            num_open_orders = open_orders_count.get(coin, 0)
+            available_coins = coin_info.available_coins  # Get available coins
             self._account_values.append({
-                "currency": currency,
-                "potential_gain": potential
+                "currency": coin,
+                "potential_gain": potential,
+                "open_orders": num_open_orders,
+                "available_coins": available_coins  # Store available coins
             })
         
         # Sort by potential gain value (descending)
