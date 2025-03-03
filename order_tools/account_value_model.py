@@ -70,14 +70,11 @@ class AccountValueTableModel(QAbstractTableModel):
             open_orders_count[currency] += 1
         
         for coin, coin_info in account_values.items():
-            potential = coin_info.potential_gain
-            num_open_orders = open_orders_count.get(coin, 0)
-            available_coins = coin_info.available_coins  # Get available coins
             self._account_values.append({
                 "currency": coin,
-                "potential_gain": potential,
-                "open_orders": num_open_orders,
-                "available_coins": available_coins  # Store available coins
+                "potential_gain": coin_info.potential_gain,
+                "open_orders": open_orders_count.get(coin, 0),
+                "available_coins": coin_info.available_coins  # Store available coins
             })
         
         # Sort by potential gain value (descending)

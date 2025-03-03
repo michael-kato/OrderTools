@@ -8,6 +8,8 @@ A desktop application that allows you to query and sort your open spot limit ord
 - Filter orders by product (e.g., BTC-USD)
 - Calculate potential account value if all limit orders were filled
 - See the percentage change in account value for each currency
+- Cancel all orders for a selected coin
+- Market sell the entire position for a selected coin
 - Auto-refresh functionality to keep data up-to-date
 
 ## Installation
@@ -76,7 +78,9 @@ python main.py
 1. **Orders Table**: Displays all your open limit orders with details like product, price, size, and total value
 2. **Filter**: Use the filter box to narrow down orders by product ID
 3. **Account Value Table**: Shows how your account balances would change if all limit orders were filled
-4. **Refresh Button**: Manually update data from Coinbase
+4. **Cancel Orders**: Cancel all orders for a selected coin
+5. **Market Sell**: Market sell the entire position for a selected coin
+6. **Refresh Button**: Manually update data from Coinbase
 
 ## Project Structure
 
