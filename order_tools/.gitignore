@@ -1,4 +1,4 @@
-cdp_api_key_ordertools.json
+cdp_api_key_ordertools*.json
 .gitignore.bak
 /__pycache__
 /.cursor

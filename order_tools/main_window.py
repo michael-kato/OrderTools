@@ -106,6 +106,7 @@ class MainWindow(QMainWindow):
     
     def refresh_data(self):
         """Refresh all data from Coinbase."""
+
         try:
             self.status_label.setText("Refreshing data...")
             
@@ -118,9 +119,7 @@ class MainWindow(QMainWindow):
             # Update account values in the model
             self.account_value_model.update_account_values(self.coinbase_client.balances, orders)
             
-            # Calculate total potential gain
-            total_potential_gain = sum(coin_info.potential_gain for coin_info in self.coinbase_client.balances.values())
-            self.total_potential_gain_label.setText(f"Total Potential Gain: {total_potential_gain:.8f}")
+            self.total_potential_gain_label.setText(f"Total Potential Gain: {self.coinbase_client.total_potential_gain:.8f}")
             
             # Resize table columns to contents
             self.account_table.resizeColumnsToContents()

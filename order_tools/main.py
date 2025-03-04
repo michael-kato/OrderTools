@@ -13,7 +13,7 @@ def main():
     app.setApplicationName("Coinbase Order Tracker")
     
     # Initialize the Coinbase client
-    coinbase_client = CoinbaseClient(api_key_file="cdp_api_key_ordertools.json")
+    coinbase_client = CoinbaseClient(api_key_file="cdp_api_key_ordertools_trade.json")
     
     # Initialize and show the main window
     main_window = MainWindow(coinbase_client)
