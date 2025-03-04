@@ -1,5 +1,0 @@
-cdp_api_key_ordertools.json
-.gitignore.bak
-/__pycache__
-/.cursor
-/coinbase_order_tracker.egg-info
