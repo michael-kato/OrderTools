@@ -1,7 +1,0 @@
-setup.py
-coinbase_order_tracker.egg-info/PKG-INFO
-coinbase_order_tracker.egg-info/SOURCES.txt
-coinbase_order_tracker.egg-info/dependency_links.txt
-coinbase_order_tracker.egg-info/entry_points.txt
-coinbase_order_tracker.egg-info/requires.txt
-coinbase_order_tracker.egg-info/top_level.txt

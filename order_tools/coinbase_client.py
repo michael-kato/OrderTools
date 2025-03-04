@@ -42,7 +42,7 @@ class CoinbaseClient:
         """
         self.cached_orders = []
 
-        self.debug_currency = "HFT"
+        self.debug_currency = "XRP"
 
     def fetch_data_via_websocket(self):
         """Fetch data using WebSocket and update caches."""
@@ -106,8 +106,6 @@ class CoinbaseClient:
         
         # Calculate potential gains from available balances
         for coin, coin_info in self.balances.items():
-            if coin == self.debug_currency:
-                print(coin_info)
             if coin_info.current_value > 0:
                 # Find the highest limit sell order for this currency
                 highest_sell_price = max(
@@ -115,9 +113,6 @@ class CoinbaseClient:
                      if order.order_side == 'SELL' and order.product_id == f"{coin}-USD"),
                     default=0
                 )
-
-                if coin == self.debug_currency:
-                    print(highest_sell_price)
 
                 if highest_sell_price > 0:
                     # Calculate potential gain if available balance is sold at the highest sell price
@@ -163,11 +158,11 @@ class CoinbaseClient:
             else:
                 price = 0.0
 
-            self.balances[coin].available_coins = float(account.available_balance['value']) + float(account.hold['value'])
-            self.balances[coin].current_value = self.balances[coin].available_coins * price
+            self.balances[coin].available_coins = float(account.available_balance['value'])
+            self.balances[coin].current_value = (self.balances[coin].available_coins + float(account.hold['value'])) * price
 
             if coin == self.debug_currency:
-                print(coin, "current price", price, "current coins", self.balances[coin].available_coins, "current value", price * float(self.balances[coin].available_coins))
+                print(coin, "current price", price, "current coins", (self.balances[coin].available_coins + float(account.hold['value'])), "current value", self.balances[coin].current_value)
 
         # Calculate potential account values after fetching data
         self.calculate_potential_account_value()

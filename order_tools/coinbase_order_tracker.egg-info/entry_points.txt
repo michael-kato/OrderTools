@@ -1,2 +1,0 @@
-[console_scripts]
-coinbase-order-tracker = main:main
