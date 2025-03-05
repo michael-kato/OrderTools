@@ -1,10 +1,6 @@
 import json
 from coinbase_advanced.coinbase.rest import RESTClient
 from coinbase_advanced.coinbase.websocket import WSClient, WebsocketResponse
-import cProfile
-import pstats
-import io
-import traceback
 
 
 """
@@ -131,8 +127,6 @@ class CoinbaseClient:
     
     def refresh_data(self):
         """Force refresh of all cached data using WebSocket."""
-        pr = cProfile.Profile()
-        pr.enable()
 
         self.fetch_data_via_websocket()
         
@@ -180,14 +174,6 @@ class CoinbaseClient:
 
         # Calculate potential account values after fetching data
         self.calculate_potential_account_value()
-
-        pr.disable()
-        s = io.StringIO()
-        sortby = 'cumulative'
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        print("Profiling results for refresh_data:")
-        print(s.getvalue())
 
     def cancel_all_orders(self, coin):
         # Cancel all orders for a specific coin
