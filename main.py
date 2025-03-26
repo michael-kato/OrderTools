@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(os.path.dirname(__file__), "coinbase_advanced"))
 from PyQt5.QtWidgets import QApplication
 from main_window import MainWindow
 from coinbase_client import CoinbaseClient

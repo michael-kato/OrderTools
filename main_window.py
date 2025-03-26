@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, 
                             QTableView, QPushButton, QLabel, 
-                            QGroupBox, QSplitter, QMessageBox, QHBoxLayout)
+                            QGroupBox, QSplitter, QMessageBox, QHBoxLayout, QTabWidget, QSpinBox, QDoubleSpinBox)
 from PyQt5.QtCore import Qt
 from account_value_model import AccountValueTableModel
 import traceback
@@ -28,6 +28,13 @@ class MainWindow(QMainWindow):
         # Create central widget and layout
         central_widget = QWidget()
         main_layout = QVBoxLayout(central_widget)
+        
+        # Create tab widget
+        tab_widget = QTabWidget()
+        
+        # Create main tab for order tracking
+        main_tab = QWidget()
+        main_tab_layout = QVBoxLayout(main_tab)
         
         # Create splitter for resizable sections
         splitter = QSplitter(Qt.Vertical)
@@ -80,20 +87,66 @@ class MainWindow(QMainWindow):
         self.percentage_gain_label = QLabel("Percentage Gain: 0.00%")
         stats_layout.addWidget(self.percentage_gain_label)
         
-        # Add stats section to main layout
-        main_layout.addWidget(splitter)
-        main_layout.addWidget(stats_widget)
+        # Add stats section to main tab layout
+        main_tab_layout.addWidget(splitter)
+        main_tab_layout.addWidget(stats_widget)
         
         # Total Potential Gain and Refresh button at the bottom
         self.total_potential_gain_label = QLabel("<h2>Total Potential Gain: 0.00000000</h2>")
-        main_layout.addWidget(self.total_potential_gain_label)
+        main_tab_layout.addWidget(self.total_potential_gain_label)
         
         # Status label
         self.status_label = QLabel("Ready")
-        main_layout.addWidget(self.status_label)
+        main_tab_layout.addWidget(self.status_label)
 
         self.refresh_button = QPushButton("Refresh Data")
-        main_layout.addWidget(self.refresh_button)
+        main_tab_layout.addWidget(self.refresh_button)
+        
+        # Add main tab to tab widget
+        tab_widget.addTab(main_tab, "Order Tracker")
+        
+        # Create Fat Finger Catcher tab
+        fat_finger_tab = QWidget()
+        fat_finger_layout = QVBoxLayout(fat_finger_tab)
+        fat_finger_label = QLabel("<h2>Fat Finger Catcher</h2>")
+        fat_finger_layout.addWidget(fat_finger_label)
+
+        # Coin pairs list
+        coin_pairs_label = QLabel("Coin Pairs:")
+        fat_finger_layout.addWidget(coin_pairs_label)
+        self.coin_pairs_list = QTableView()
+        #self.coin_pairs_list.setModel(self.coin_pairs_model)  # You need to create this model
+        fat_finger_layout.addWidget(self.coin_pairs_list)
+
+        # UI for placing limit buy orders
+        order_ui_label = QLabel("Place Limit Buy Orders:")
+        fat_finger_layout.addWidget(order_ui_label)
+        order_ui_widget = QWidget()
+        order_ui_layout = QVBoxLayout(order_ui_widget)
+        
+        # Number of orders input
+        self.num_orders_input = QSpinBox()
+        self.num_orders_input.setRange(1, 10)
+        self.num_orders_input.setValue(1)
+        order_ui_layout.addWidget(QLabel("Number of Orders:"))
+        order_ui_layout.addWidget(self.num_orders_input)
+        
+        # Percentage below moving average input
+        self.percentage_input = QDoubleSpinBox()
+        self.percentage_input.setRange(0, 100)
+        self.percentage_input.setValue(5)
+        order_ui_layout.addWidget(QLabel("Percentage Below Moving Average:"))
+        order_ui_layout.addWidget(self.percentage_input)
+        
+        # Place orders button
+        self.place_orders_button = QPushButton("Place Orders")
+        order_ui_layout.addWidget(self.place_orders_button)
+        
+        fat_finger_layout.addWidget(order_ui_widget)
+        tab_widget.addTab(fat_finger_tab, "Fat Finger Catcher")
+        
+        # Add tab widget to main layout
+        main_layout.addWidget(tab_widget)
         
         self.setCentralWidget(central_widget)
     
