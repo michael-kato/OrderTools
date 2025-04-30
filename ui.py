@@ -6,7 +6,7 @@ from account_value_model import AccountValueTableModel
 import traceback
 import time
 
-class MainWindow(QMainWindow):
+class UI(QMainWindow):
     """Main window for the Coinbase Order Tracker application."""
     
     def __init__(self, coinbase_client):
