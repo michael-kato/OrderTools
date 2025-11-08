@@ -128,6 +128,90 @@ class ExchangeClient:
                 self.exchange.create_market_sell_order(symbol, self.balances[base_currency])
             except Exception as e:
                 print(f"Error placing market sell order: {e}")
+    
+    def get_usd_pairs_under_threshold(self, threshold=20.0):
+        """
+        Get all USD trading pairs where current balance is under threshold.
+        
+        Args:
+            threshold (float): Minimum USD value threshold
+            
+        Returns:
+            list: List of dicts with currency, balance, and symbol info
+        """
+        try:
+            markets = self.exchange.load_markets()
+            usd_pairs = []
+            
+            for symbol, market in markets.items():
+                if market['quote'] == 'USD' and market['active']:
+                    base_currency = market['base']
+                    
+                    # Get current balance in USD
+                    balance = self.balances.get(base_currency, 0)
+                    
+                    # Get current price to calculate USD value
+                    try:
+                        ticker = self.exchange.fetch_ticker(symbol)
+                        current_price = ticker['last']
+                        usd_value = balance * current_price
+                        
+                        if usd_value < threshold:
+                            usd_pairs.append({
+                                'currency': base_currency,
+                                'balance': usd_value,
+                                'symbol': symbol
+                            })
+                    except Exception as e:
+                        print(f"Error fetching ticker for {symbol}: {e}")
+                        continue
+            
+            # Sort by currency name
+            usd_pairs.sort(key=lambda x: x['currency'])
+            return usd_pairs
+            
+        except Exception as e:
+            print(f"Error getting USD pairs: {e}")
+            return []
+    
+    def market_buy_multiple(self, symbols, usd_amount_per_coin):
+        """
+        Execute market buy orders for multiple symbols.
+        
+        Args:
+            symbols (list): List of trading pair symbols (e.g., ['BTC/USD', 'ETH/USD'])
+            usd_amount_per_coin (float): USD amount to spend on each coin
+            
+        Returns:
+            dict: Results with success/failure info for each symbol
+        """
+        results = {'success': [], 'failed': []}
+        
+        for symbol in symbols:
+            try:
+                # Get current price
+                ticker = self.exchange.fetch_ticker(symbol)
+                current_price = ticker['last']
+                
+                # Calculate amount to buy
+                amount = usd_amount_per_coin / current_price
+                
+                # Place market buy order
+                order = self.exchange.create_market_buy_order(symbol, amount)
+                results['success'].append({
+                    'symbol': symbol,
+                    'amount': amount,
+                    'order_id': order['id']
+                })
+                
+            except Exception as e:
+                results['failed'].append({
+                    'symbol': symbol,
+                    'error': str(e)
+                })
+                print(f"Error buying {symbol}: {e}")
+        
+        return results
 
 def run():
     # Initialize the application

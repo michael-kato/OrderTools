@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout,
                             QGroupBox, QSplitter, QMessageBox, QHBoxLayout, QTabWidget, QSpinBox, QDoubleSpinBox)
 from PyQt5.QtCore import Qt
 from account_value_model import AccountValueTableModel
+from usd_pairs_model import USDPairsTableModel
 import traceback
 import time
 
@@ -13,6 +14,7 @@ class UI(QMainWindow):
         super().__init__()
         self.coinbase_client = coinbase_client
         self.account_value_model = AccountValueTableModel()
+        self.usd_pairs_model = USDPairsTableModel()
         
         self.init_ui()
         self.setup_connections()
@@ -145,6 +147,61 @@ class UI(QMainWindow):
         fat_finger_layout.addWidget(order_ui_widget)
         tab_widget.addTab(fat_finger_tab, "Fat Finger Catcher")
         
+        # Create Market Buy tab
+        market_buy_tab = QWidget()
+        market_buy_layout = QVBoxLayout(market_buy_tab)
+        
+        market_buy_label = QLabel("<h2>Market Buy - Low Balance Coins</h2>")
+        market_buy_desc = QLabel("USD pairs where you own less than $20. Select and buy with a fixed dollar amount.")
+        market_buy_desc.setWordWrap(True)
+        
+        market_buy_layout.addWidget(market_buy_label)
+        market_buy_layout.addWidget(market_buy_desc)
+        
+        # USD pairs table
+        self.usd_pairs_table = QTableView()
+        self.usd_pairs_table.setModel(self.usd_pairs_model)
+        self.usd_pairs_table.setAlternatingRowColors(True)
+        self.usd_pairs_table.horizontalHeader().setStretchLastSection(True)
+        market_buy_layout.addWidget(self.usd_pairs_table)
+        
+        # Selection buttons
+        selection_buttons_widget = QWidget()
+        selection_buttons_layout = QHBoxLayout(selection_buttons_widget)
+        
+        self.select_all_button = QPushButton("Select All")
+        self.deselect_all_button = QPushButton("Deselect All")
+        self.refresh_pairs_button = QPushButton("Refresh List")
+        
+        selection_buttons_layout.addWidget(self.select_all_button)
+        selection_buttons_layout.addWidget(self.deselect_all_button)
+        selection_buttons_layout.addWidget(self.refresh_pairs_button)
+        
+        market_buy_layout.addWidget(selection_buttons_widget)
+        
+        # Buy amount input
+        buy_widget = QWidget()
+        buy_layout = QHBoxLayout(buy_widget)
+        
+        buy_layout.addWidget(QLabel("USD per coin:"))
+        self.usd_amount_input = QDoubleSpinBox()
+        self.usd_amount_input.setRange(1, 10000)
+        self.usd_amount_input.setValue(20)
+        self.usd_amount_input.setPrefix("$")
+        buy_layout.addWidget(self.usd_amount_input)
+        
+        self.execute_buy_button = QPushButton("Execute Market Buy")
+        self.execute_buy_button.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+        buy_layout.addWidget(self.execute_buy_button)
+        
+        market_buy_layout.addWidget(buy_widget)
+        
+        # Market buy status
+        self.market_buy_status = QLabel("Select coins and click Execute Market Buy")
+        market_buy_layout.addWidget(self.market_buy_status)
+        
+        tab_widget.addTab(market_buy_tab, "Market Buy")
+        
         # Add tab widget to main layout
         main_layout.addWidget(tab_widget)
         
@@ -156,6 +213,12 @@ class UI(QMainWindow):
         self.account_table.selectionModel().selectionChanged.connect(self.update_stats_for_selected_coin)
         self.cancel_orders_button.clicked.connect(self.cancel_all_orders)
         self.market_sell_button.clicked.connect(self.market_sell_entire_position)
+        
+        # Market buy tab connections
+        self.select_all_button.clicked.connect(self.select_all_pairs)
+        self.deselect_all_button.clicked.connect(self.deselect_all_pairs)
+        self.refresh_pairs_button.clicked.connect(self.refresh_usd_pairs)
+        self.execute_buy_button.clicked.connect(self.execute_market_buy)
     
     def refresh_data(self):
         """Refresh all data from Coinbase."""
@@ -243,3 +306,87 @@ class UI(QMainWindow):
             self.total_orders_label.setText(f"Total Orders: {len([order for order in self.coinbase_client.get_open_orders() if order['product_id'].startswith(coin)])}")
             self.current_value_label.setText(f"Current Total Value: {current_value:.2f} USD")
             self.percentage_gain_label.setText(f"Percentage Gain: {percentage_gain:.2f}%")
+    
+    def refresh_usd_pairs(self):
+        """Refresh the list of USD pairs under $20 threshold."""
+        try:
+            self.market_buy_status.setText("Fetching USD pairs...")
+            
+            # Fetch balances first
+            self.coinbase_client.fetch_balances()
+            
+            # Get USD pairs under threshold
+            pairs = self.coinbase_client.get_usd_pairs_under_threshold(threshold=20.0)
+            
+            # Update model
+            self.usd_pairs_model.update_pairs(pairs)
+            
+            # Resize columns
+            self.usd_pairs_table.resizeColumnsToContents()
+            
+            self.market_buy_status.setText(f"Found {len(pairs)} USD pairs under $20")
+        
+        except Exception as e:
+            error_message = f"Error fetching USD pairs: {str(e)}"
+            self.market_buy_status.setText(error_message)
+            QMessageBox.critical(self, "Error", error_message)
+            traceback.print_exc()
+    
+    def select_all_pairs(self):
+        """Select all USD pairs."""
+        self.usd_pairs_model.select_all()
+    
+    def deselect_all_pairs(self):
+        """Deselect all USD pairs."""
+        self.usd_pairs_model.deselect_all()
+    
+    def execute_market_buy(self):
+        """Execute market buy for selected pairs."""
+        selected_symbols = self.usd_pairs_model.get_selected_pairs()
+        
+        if not selected_symbols:
+            QMessageBox.warning(self, "Warning", "No coins selected.")
+            return
+        
+        usd_amount = self.usd_amount_input.value()
+        
+        # Confirmation dialog
+        total_cost = usd_amount * len(selected_symbols)
+        confirm_msg = f"Buy {len(selected_symbols)} coins at ${usd_amount} each?\nTotal: ${total_cost:.2f}"
+        
+        reply = QMessageBox.question(self, "Confirm Market Buy", 
+                                     confirm_msg,
+                                     QMessageBox.Yes | QMessageBox.No)
+        
+        if reply == QMessageBox.No:
+            return
+        
+        try:
+            self.market_buy_status.setText(f"Executing market buy for {len(selected_symbols)} coins...")
+            
+            # Execute market buys
+            results = self.coinbase_client.market_buy_multiple(selected_symbols, usd_amount)
+            
+            # Show results
+            success_count = len(results['success'])
+            failed_count = len(results['failed'])
+            
+            result_msg = f"Success: {success_count}\nFailed: {failed_count}"
+            
+            if results['failed']:
+                failed_details = "\n".join([f"{item['symbol']}: {item['error']}" for item in results['failed']])
+                result_msg += f"\n\nFailed orders:\n{failed_details}"
+            
+            QMessageBox.information(self, "Market Buy Results", result_msg)
+            
+            self.market_buy_status.setText(f"Completed: {success_count} success, {failed_count} failed")
+            
+            # Refresh data
+            self.refresh_data()
+            self.refresh_usd_pairs()
+        
+        except Exception as e:
+            error_message = f"Error executing market buy: {str(e)}"
+            self.market_buy_status.setText(error_message)
+            QMessageBox.critical(self, "Error", error_message)
+            traceback.print_exc()
