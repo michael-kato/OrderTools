@@ -7,7 +7,7 @@ import traceback
 import time
 
 class UI(QMainWindow):
-    """Main window for the Coinbase Order Tracker application."""
+    """Main window"""
     
     def __init__(self, coinbase_client):
         super().__init__()
@@ -22,7 +22,7 @@ class UI(QMainWindow):
     
     def init_ui(self):
         """Set up the user interface."""
-        self.setWindowTitle("Coinbase Order Tracker")
+        self.setWindowTitle("Field Orders")
         self.setMinimumSize(900, 600)
         
         # Create central widget and layout

@@ -1,7 +1,5 @@
-
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), "coinbase_advanced"))
 import json
 import ccxt
 from PyQt5.QtWidgets import QApplication
@@ -10,12 +8,13 @@ from ui import UI
 """
 IDEAS:
 Add stink bid sell orders and stink bid buy orders on all charts
+Add fat finger tool to always have some orders on every chart
 Add signals bot that looks for abnormal volume spikes. Start tracking paper trades for the bot's success. 
 Add candlestick charts.
 """
 
 
-class CoinInfo():
+class CoinInfo:
     def __init__(self):
         self.available_coins = 0.0
         self.current_value = 0.0
@@ -25,18 +24,20 @@ class CoinInfo():
 class ExchangeClient:
     """Client for interacting with cryptocurrency exchanges using ccxt."""
 
-    def __init__(self, exchange_name, api_key, api_secret):
+    def __init__(self, config_file):
         """
-        Initialize the exchange client.
+        Initialize the exchange client using a configuration file.
 
         Args:
-            exchange_name (str): Name of the exchange (e.g., 'coinbasepro', 'mexc').
-            api_key (str): API key for the exchange.
-            api_secret (str): API secret for the exchange.
+            config_file (str): Path to the JSON file containing API credentials and exchange name.
         """
-        self.exchange_name = exchange_name.lower()
-        self.api_key = api_key
-        self.api_secret = api_secret
+        # Load API credentials from the configuration file
+        with open(config_file, 'r') as file:
+            config = json.load(file)
+
+        self.exchange_name = config['exchange'].lower()
+        self.api_key = config['api_key']
+        self.api_secret = config['api_secret']
 
         # Initialize the exchange instance
         self.exchange = getattr(ccxt, self.exchange_name)({
@@ -128,20 +129,21 @@ class ExchangeClient:
             except Exception as e:
                 print(f"Error placing market sell order: {e}")
 
-def main():
+def run():
     # Initialize the application
     app = QApplication(sys.argv)
-    app.setApplicationName("Order Tools")
-    
+    app.setApplicationName("Field Orders")
+
     # Initialize the exchange client
-    client = ExchangeClient(api_key_file="cdp_api_key_ordertools_trade.json")
-    
+    client = ExchangeClient(config_file="cdp_api_key_fieldorders.json")
+
     # Initialize and show the main window
     main_window = UI(client)
     main_window.show()
-    
+
     # Start the application event loop
     sys.exit(app.exec_())
 
+
 if __name__ == "__main__":
-    main()
+    run()

@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="crypto-order-tools",
+    name="field-orders",
     version="0.2.0",
     packages=find_packages(),
     install_requires=[
@@ -10,10 +10,10 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "crypto-order-tools=main:main",
+            "field-orders=main:main",
         ],
     },
-    author="Crypto Order Tools",
+    author="",
     description="A tool to track and analyze cryptocurrency spot limit orders across multiple exchanges",
     classifiers=[
         "Programming Language :: Python :: 3",
